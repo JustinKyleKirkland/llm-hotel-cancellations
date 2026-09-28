@@ -11,15 +11,17 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# One fixed color per method, used by every chart (Okabe-Ito-derived, colorblind-safe).
+# One fixed color per method, used by every chart. Slots 1-6 of the dataviz reference palette in
+# their validated (colorblind-checked) order; the naive baseline is a neutral gray.
 METHODS = {
-    "naive":        {"label": "LLM naive (raw)",        "color": "#9A9A9A"},
-    "anyjev_l0":    {"label": "AnyJev L0 (0 labels)",   "color": "#3B82C4"},
-    "anyjev_l1":    {"label": "AnyJev L1 (300 labels)", "color": "#1F9E6E"},
-    "lgbm_full":    {"label": "LightGBM (full train)",  "color": "#D9822B"},
-    "logreg_full":  {"label": "Logistic reg. (full)",   "color": "#B55D9E"},
-    "lgbm_300":     {"label": "LightGBM (300 labels)",  "color": "#E8B04A"},
-    "logreg_300":   {"label": "Logistic reg. (300)",    "color": "#D9A3C8"},
+    "naive":        {"label": "LLM naive (raw)",        "color": "#8a8984"},
+    "anyjev_l0":    {"label": "AnyJev L0 (0 labels)",   "color": "#2a78d6"},
+    "lgbm_full":    {"label": "LightGBM (full train)",  "color": "#eb6834"},
+    "anyjev_l1":    {"label": "AnyJev L1 (300 labels)", "color": "#1baf7a"},
+    "anyjev_l2":    {"label": "AnyJev L2 (300 labels)", "color": "#4a3aa7"},
+    "lgbm_300":     {"label": "LightGBM (300 labels)",  "color": "#eda100"},
+    "logreg_full":  {"label": "Logistic reg. (full)",   "color": "#e87ba4"},
+    "logreg_300":   {"label": "Logistic reg. (300)",    "color": "#008300"},
 }
 
 

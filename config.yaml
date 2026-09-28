@@ -4,7 +4,7 @@ seed: 42
 model:
   name: Qwen/Qwen3-1.7B        # any HF causal LM with a chat template; Qwen3-4B needs >= 16 GB RAM
   device: mps                  # mps | cpu | cuda (falls back to cpu if unavailable)
-  dtype: bfloat16              # bfloat16 | float16 | float32
+  dtype: float16               # float16 on Apple Silicon (M1 has no native bf16: 0.49 vs 0.68 s/prompt); bfloat16 on CUDA
   batch_size: 8
 
 question: "Based on this booking, will the guest cancel it before arrival?"
