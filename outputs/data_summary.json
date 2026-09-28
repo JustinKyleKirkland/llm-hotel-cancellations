@@ -1,0 +1,37 @@
+{
+  "source": "paper supplement (H1.csv + H2.csv)",
+  "rows_raw": 119390,
+  "rows_clean": 119210,
+  "cancel_rate": 0.370765875346028,
+  "dropped_columns": [
+    "reservation_status",
+    "reservation_status_date",
+    "assigned_room_type"
+  ],
+  "splits": {
+    "train": {
+      "rows": 83447,
+      "cancel_rate": 0.3708
+    },
+    "calib": {
+      "rows": 11921,
+      "cancel_rate": 0.3708
+    },
+    "test_pool": {
+      "rows": 23842,
+      "cancel_rate": 0.3708
+    },
+    "test_sample": {
+      "rows": 2000,
+      "cancel_rate": 0.371
+    },
+    "calib_sample": {
+      "rows": 300,
+      "cancel_rate": 0.37
+    }
+  },
+  "hotels": {
+    "City Hotel": 79163,
+    "Resort Hotel": 40047
+  }
+}

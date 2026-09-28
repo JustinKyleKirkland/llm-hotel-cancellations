@@ -1,0 +1,36 @@
+# hotel-anyjev configuration. Every script reads this file; `--smoke` overrides a few keys.
+seed: 42
+
+model:
+  name: Qwen/Qwen3-1.7B        # any HF causal LM with a chat template; Qwen3-4B needs >= 16 GB RAM
+  device: mps                  # mps | cpu | cuda (falls back to cpu if unavailable)
+  dtype: bfloat16              # bfloat16 | float16 | float32
+  batch_size: 8
+
+question: "Based on this booking, will the guest cancel it before arrival?"
+
+data:
+  source: paper                # paper (H1.csv + H2.csv from the Data in Brief supplement) | mirror
+  paper_dir: data/raw
+  mirror_url: https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-02-11/hotels.csv
+  mirror_path: data/raw/hotels_tidytuesday.csv
+  processed_dir: data/processed
+  test_frac: 0.20              # of all bookings -> test pool
+  calib_frac: 0.10             # of all bookings -> calibration pool (rest is train)
+
+experiment:
+  n_test: 2000                 # stratified sample of the test pool scored by the LLM
+  n_calib: 300                 # labels for AnyJev L1 and for the low-data LightGBM
+  thresholds: [0.60, 0.65, 0.70, 0.75, 0.80, 0.85, 0.90, 0.95]
+  ece_bins: 15
+
+paths:
+  outputs: outputs
+  figures: figures
+  cache: outputs/cache
+
+smoke:
+  n_test: 50
+  n_calib: 50
+  outputs: outputs/smoke
+  figures: figures/smoke
