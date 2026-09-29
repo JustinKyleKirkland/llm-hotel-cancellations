@@ -51,6 +51,26 @@ def main():
     show = ["label", "accuracy", "f1", "roc_auc", "brier", "ece", "coverage_at_5pct_error", "order_flip_rate"]
     with pd.option_context("display.width", 200, "display.float_format", "{:.3f}".format):
         print(table[show].to_string(index=False))
+    label_curve(cfg)
+
+
+def label_curve(cfg):
+    """Merge the two halves of the label-efficiency curve and summarise each (method, budget)."""
+    out_dir = cfg["paths"]["outputs"]
+    parts = [out_dir / f"label_curve_{s}.csv" for s in ("l2", "tabular")]
+    if not all(p.exists() for p in parts):
+        return
+    df = pd.concat([pd.read_csv(p) for p in parts], ignore_index=True)
+    df.to_csv(out_dir / "label_curve.csv", index=False, float_format="%.4f")
+    keys = ("accuracy", "roc_auc", "ece", "brier", "coverage_at_5pct_error")
+    summary = (df.groupby(["method", "n_labels"])
+                 .agg(n_repeats=("repeat", "size"),
+                      **{f"{k}_{s}": (k, s) for k in keys for s in ("mean", "min", "max")})
+                 .reset_index())
+    save_json({"summary": summary.to_dict(orient="records")}, out_dir / "label_curve.json")
+    with pd.option_context("display.width", 200, "display.float_format", "{:.3f}".format):
+        print(summary[["method", "n_labels", "n_repeats", "accuracy_mean", "accuracy_min", "accuracy_max",
+                       "roc_auc_mean", "ece_mean", "coverage_at_5pct_error_mean"]].to_string(index=False))
 
 
 if __name__ == "__main__":

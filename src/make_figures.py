@@ -199,6 +199,52 @@ def summary_table(cfg, metrics, n, model):
     save(fig, cfg, "summary_table.png")
 
 
+def label_curve(cfg, metrics, n, model, metric="accuracy"):
+    """How many labels does it take? One line per method over the label budget, a band for the
+    spread over resamples, and the two reference points that frame it: always saying "won't
+    cancel" (which is what the zero-label LLM does) and LightGBM on the full training split."""
+    df = pd.read_csv(cfg["paths"]["outputs"] / "label_curve.csv")
+    fig, ax = plt.subplots(figsize=(8, 8.2))
+    fig.subplots_adjust(left=0.13, right=0.97, top=0.83, bottom=0.27)
+    series = [("anyjev_l2", "AnyJev L2 (LLM + labels)", METHODS["anyjev_l2"]["color"]),
+              ("logreg", "Logistic regression", METHODS["logreg_300"]["color"]),
+              ("lgbm", "LightGBM", METHODS["lgbm_300"]["color"])]
+    for key, label, color in series:
+        g = df[df.method == key].groupby("n_labels")[metric].agg(["mean", "min", "max"]).reset_index()
+        ax.fill_between(g.n_labels, g["min"], g["max"], color=color, alpha=0.15, lw=0, zorder=2)
+        ax.plot(g.n_labels, g["mean"], color=color, lw=2.5, marker="o", ms=8, mec=SURFACE, mew=2,
+                label=label, zorder=3)
+    full = metrics["lgbm_full"][metric]
+    floor = metrics["anyjev_l0"][metric]
+    ax.axhline(full, color=METHODS["lgbm_full"]["color"], lw=1.5, ls=(0, (4, 3)), zorder=1)
+    n_train = load_json(cfg["paths"]["outputs"] / "run_classical.json")["n_train"]
+    ax.axhline(floor, color=MUTED, lw=1.5, ls=(0, (1, 2.5)), zorder=1)
+    ax.set_xscale("log")
+    budgets = sorted(df.n_labels.unique())
+    ax.set_xticks(budgets, [f"{b:,}" for b in budgets])
+    ax.minorticks_off()
+    lo = min(floor, df[metric].min()) - 0.04
+    ax.set_ylim(np.floor(lo * 20) / 20, min(1.0, full + 0.05))
+    ax.yaxis.set_major_formatter(matplotlib.ticker.FormatStrFormatter("%.2f"))
+    ax.set_xlabel("Labelled bookings used for training")
+    ax.set_ylabel({"accuracy": "Accuracy", "roc_auc": "ROC-AUC"}[metric] + f" on {n:,} held-out bookings")
+    from matplotlib.lines import Line2D
+    handles = [Line2D([], [], color=c, lw=3, label=lab) for _, lab, c in series]
+    handles += [Line2D([], [], color=METHODS["lgbm_full"]["color"], lw=1.5, ls=(0, (4, 3)),
+                       label=f"LightGBM, all {n_train:,} bookings ({full:.3f})"),
+                Line2D([], [], color=MUTED, lw=1.5, ls=(0, (1, 2.5)),
+                       label=f"AnyJev L0, 0 labels ({floor:.3f}"
+                             + (", = always “no”)" if metric == "accuracy" else ")"))]
+    ax.legend(handles=handles, loc="upper center", bbox_to_anchor=(0.43, -0.12), ncol=2, handlelength=1.6,
+              columnspacing=1.0, fontsize=12.5)
+    reps = df.groupby("n_labels").repeat.nunique()
+    titled(fig, "How many labels does it take?",
+           f"Every method trains on the same labelled bookings · shaded = range\n"
+           f"over {reps.min()}–{reps.max()} random draws per budget · LLM = {model}".replace(
+               f"{reps.min()}–{reps.max()}", str(reps.max()) if reps.min() == reps.max() else f"{reps.min()}–{reps.max()}"))
+    save(fig, cfg, "label_curve.png" if metric == "accuracy" else f"label_curve_{metric}.png")
+
+
 def main():
     cfg = setup(__doc__)
     out = cfg["paths"]["outputs"]
@@ -211,6 +257,9 @@ def main():
     if (out / "order_flip.json").exists():
         order_flip(cfg, load_json(out / "order_flip.json"), n, model)
     summary_table(cfg, metrics, n, model)
+    if (out / "label_curve.csv").exists():
+        label_curve(cfg, metrics, n, model, "accuracy")
+        label_curve(cfg, metrics, n, model, "roc_auc")
 
 
 if __name__ == "__main__":

@@ -40,12 +40,14 @@ class CachedHFBackend(HFBackend):
     of weights on an 8 GB machine's GPU for nothing."""
 
     def __init__(self, model_name: str, cache_dir: Path, **kw):
-        from transformers import AutoTokenizer
+        from transformers import AutoConfig, AutoTokenizer
 
         self._init_kw = dict(kw)
         self._loaded = False
         self.name, self.device, self.dtype, self.batch_size = model_name, kw.get("device"), kw.get("dtype"), kw.get("batch_size", 16)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        mcfg = AutoConfig.from_pretrained(model_name)      # depth and width without loading weights
+        self.n_layers, self.hidden_size = int(mcfg.num_hidden_layers), int(mcfg.hidden_size)
         self.tokenizer.padding_side = "left"
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
@@ -53,6 +55,8 @@ class CachedHFBackend(HFBackend):
         self.cache_path = Path(cache_dir) / f"{slug}.{kw.get('dtype', 'bf16')}.pkl"
         self.cache = pickle.loads(self.cache_path.read_bytes()) if self.cache_path.exists() else {}
         self.sec_per_prompt = self.cache.pop("__sec_per_prompt__", None)
+        self.hidden_path = Path(cache_dir) / f"{slug}.{kw.get('dtype', 'bf16')}.hidden.pkl"
+        self._hidden = None        # prompt hash -> float16 [len(candidate layers), H], loaded on demand
 
     def ensure_loaded(self):
         if not self._loaded:
@@ -60,6 +64,49 @@ class CachedHFBackend(HFBackend):
             super().__init__(self.name, **self._init_kw)
             self._loaded = True
             print(f"[model] weights loaded on {self.device}/{self.dtype} in {time.time() - t0:.0f}s")
+
+    # ---- hidden states (AnyJev L2) ----------------------------------------------------------
+    def candidate_layers(self):
+        """The blocks Decider.fit_head() chooses from by default: 50/60/70/85/100% of depth."""
+        n = int(self.n_layers)
+        return sorted({max(1, int(round(f * n))) for f in (0.5, 0.6, 0.7, 0.85, 1.0)})
+
+    def hidden_states_to(self, prompts, layers, token_ids=None, positions=None, max_layer=None, lens_ids=None):
+        """AnyJev's block-loop feature extractor with a per-prompt cache. Every uncached prompt is run
+        once to full depth and all candidate layers are kept, so fitting heads on many label budgets
+        re-runs nothing. Anything the cache cannot answer goes to AnyJev's own implementation."""
+        self.ensure_loaded()
+        cand = self.candidate_layers()
+        n_blocks = int(self.n_layers)
+        want = [(n_blocks + 1 + i) if i < 0 else int(i) for i in layers]
+        if token_ids is not None or positions is not None or lens_ids is not None or not set(want) <= set(cand):
+            return super().hidden_states_to(prompts, layers, token_ids, positions, max_layer, lens_ids)
+        if self._hidden is None:
+            self._hidden = pickle.loads(self.hidden_path.read_bytes()) if self.hidden_path.exists() else {}
+        keys = [hashlib.sha1(p.encode()).hexdigest() for p in prompts]
+        todo = sorted({k: i for i, k in enumerate(keys) if k not in self._hidden}.values(), key=lambda i: len(prompts[i]))
+        if todo:
+            print(f"[hidden] {len(todo)} prompts to run to full depth ({len(prompts) - len(todo)} cached); "
+                  f"estimated {len(todo) * (self.sec_per_prompt or 0.5) / 60:.1f} min")
+            chunk = self.batch_size * 8
+            with tqdm(total=len(todo), unit="prompt", smoothing=0.1) as bar:
+                for start in range(0, len(todo), chunk):
+                    idx = todo[start:start + chunk]
+                    feats = super().hidden_states_to([prompts[i] for i in idx], cand, max_layer=n_blocks)[0]
+                    for i, f in zip(idx, feats):
+                        self._hidden[keys[i]] = f.astype(np.float16)
+                    bar.update(len(idx))
+                    if (start // chunk) % 10 == 9:
+                        self._save_hidden()
+            self._save_hidden()
+        pos = [cand.index(layer) for layer in want]
+        feats = np.stack([self._hidden[k][pos] for k in keys]).astype(np.float32)
+        return feats, [None] * len(prompts), None, None
+
+    def _save_hidden(self):
+        tmp = self.hidden_path.with_suffix(".tmp")
+        tmp.write_bytes(pickle.dumps(self._hidden))
+        tmp.replace(self.hidden_path)
 
     def _key(self, prompt: str, ids) -> str:
         return hashlib.sha1((prompt + "\x00" + ",".join(map(str, ids))).encode()).hexdigest()

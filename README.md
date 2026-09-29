@@ -44,6 +44,9 @@ src/
   run_l1.py              (c) Decider.calibrate() on 300 labels, then level="L1"
   run_l2.py              (extra) Decider.fit_head() on the same 300 labels, then level="L2"
   run_order_flip.py      (d) "Yes or No" vs "No or Yes": how many decisions change
+  label_budgets.py       label budgets 25/50/100/300/1,000 and their random draws
+  run_label_curve.py     (extra) AnyJev L2 at each label budget (hidden states cached per prompt)
+  run_label_curve_tabular.py  logistic regression + LightGBM on the same labelled rows
   classical.py           tabular features, LightGBM / logistic regression
   run_classical.py       (e) LightGBM + logistic regression on the full training split
   run_lowdata.py         (f) the same models on the 300 rows L1 gets
@@ -51,7 +54,8 @@ src/
   evaluate.py            all metrics + bootstrap 95% CIs -> outputs/metrics.json, metrics_summary.csv
   make_figures.py        figures/*.png
 outputs/                 preds_<method>.csv, metrics.json, order_flip.json, run_*.json, example_prompts.md
-figures/                 reliability_diagram.png, coverage_vs_accuracy.png, order_flip.png, summary_table.png
+figures/                 reliability_diagram.png, coverage_vs_accuracy.png, order_flip.png, summary_table.png,
+                         label_curve_roc_auc.png, label_curve.png (accuracy)
 article/draft.md         the Medium draft
 ```
 
@@ -111,10 +115,20 @@ reads long lead times as commitment. Its zero-label ranking is therefore *invert
 hotels. Neither the prior correction (L0) nor a temperature (L1) can change a ranking. Labels
 used through L2, or a tabular model, can.
 
+## Label-efficiency curve
+
+`run_label_curve.py` and `run_label_curve_tabular.py` train AnyJev L2, logistic regression and
+LightGBM on the same labelled bookings at 25, 50, 100, 300 and 1,000 labels (5 draws each up to
+100, 3 at 300, 1 at 1,000). They run as separate processes on purpose: torch and LightGBM each
+load their own OpenMP runtime, and having both in one process segfaults on macOS. Result: 25
+labels turn the LLM's ranking from backwards (AUC 0.388) to useful (0.640), but logistic
+regression is ahead at every budget (see `outputs/label_curve.json`).
+
 ## Runtime
 
 The LLM part costs 2 forwards per test booking plus 2 per calibration booking (about 4,600
 prompts for the default run), plus one hidden-state forward per booking for L2 (about 2,300).
-That is roughly an hour on an M1 Mac mini. The scripts print an estimate after the first batch, and later
+The label curve adds about 30 minutes (about 3,700 hidden-state forwards). That is about 1.5 hours
+in all on an M1 Mac mini. The scripts print an estimate after the first batch, and later
 runs reuse the measured speed (see the log for this machine's number). Everything else takes
 under a minute.
