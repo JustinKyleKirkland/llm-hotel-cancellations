@@ -7,13 +7,35 @@ L0    : AnyJev's L0 readout with the option order reversed. For a yes/no questio
         recomputing it with the order reversed rather than assumed.
 Ablation "prior only": the batch-prior correction applied to one phrasing at a time (no order
 averaging), which shows which half of L0 removes the order effect.
-All numbers come from one decide_batch(level="L0") call (the forwards are cached from run_l0).
+It also measures the ranking (ROC-AUC) under each order alone, with and without the one-sentence hint.
+All numbers come from decide_batch(level="L0") calls whose forwards are cached by run_l0 / run_l0_hint.
 """
 import numpy as np
 from anyjev.calibrate import apply_contextual, marginalize
+from sklearn.metrics import roc_auc_score
 
 from common import save_json, setup
 from llm_common import CANCEL, load_backend, load_split, make_decider, question, states_and_labels
+
+
+def ranking_by_order(be, cfg, states, y):
+    """ROC-AUC of P(cancel) read under each answer order alone, and of L0 (both orders), for the plain
+    question and the one-sentence-hint question (run_l0_hint.py): does the order change the ranking?"""
+    out = {}
+    for hint in (False, True):
+        decs = make_decider(be).decide_batch(states, question(cfg, hint=hint), level="L0")
+        P = np.stack([d.diagnostics["p_pos_raw"] for d in decs])       # [N, order, position]
+        yes_first, no_first = P[:, 0, 0], P[:, 1, 1]                   # P(Yes) under each order
+        out["hint" if hint else "plain"] = {
+            "auc_yes_or_no": float(roc_auc_score(y, yes_first)),
+            "auc_no_or_yes": float(roc_auc_score(y, no_first)),
+            "auc_l0": float(roc_auc_score(y, [d.probs[CANCEL] for d in decs])),
+            "corr_log_p_yes_across_orders": float(np.corrcoef(np.log(yes_first), np.log(no_first))[0, 1]),
+        }
+        print(f"{'hint ' if hint else 'plain'} AUC  Yes-or-No {out['hint' if hint else 'plain']['auc_yes_or_no']:.3f}"
+              f"  No-or-Yes {out['hint' if hint else 'plain']['auc_no_or_yes']:.3f}"
+              f"  L0 {out['hint' if hint else 'plain']['auc_l0']:.3f}")
+    return out
 
 
 def main():
@@ -59,6 +81,7 @@ def main():
         }
         print(f"{name:11s} flip rate {flips.mean():.3f}  ({flips.sum()} of {len(a)})  "
               f"mean |dp| {np.abs(a - b).mean():.3f}")
+    out["ranking_by_order"] = ranking_by_order(be, cfg, states, y)
     save_json(out, cfg["paths"]["outputs"] / "order_flip.json")
 
 

@@ -31,5 +31,19 @@
       "cancel_rate_pred_yes_first": 0.0,
       "cancel_rate_pred_no_first": 0.0
     }
+  },
+  "ranking_by_order": {
+    "plain": {
+      "auc_yes_or_no": 0.32520708436357715,
+      "auc_no_or_yes": 0.544899703889715,
+      "auc_l0": 0.3877169939878042,
+      "corr_log_p_yes_across_orders": -0.265687881160988
+    },
+    "hint": {
+      "auc_yes_or_no": 0.7087572152777479,
+      "auc_no_or_yes": 0.3313376600002571,
+      "auc_l0": 0.5882733256484644,
+      "corr_log_p_yes_across_orders": -0.4111669305557122
+    }
   }
 }

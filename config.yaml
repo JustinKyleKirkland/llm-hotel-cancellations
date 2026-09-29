@@ -8,6 +8,11 @@ model:
   batch_size: 8
 
 question: "Based on this booking, will the guest cancel it before arrival?"
+# One sentence of a revenue manager's knowledge, taken from the TRAINING split only (99.3% of its
+# 10,238 non-refundable bookings canceled; 97% were Groups or Offline TA/TO). Used by run_l0_hint.py.
+hint: >-
+  Note from the revenue manager: at these hotels, bookings with a non-refundable deposit are almost
+  always canceled before arrival; most of them are group or tour-operator bookings.
 
 data:
   source: paper                # paper (H1.csv + H2.csv from the Data in Brief supplement) | mirror

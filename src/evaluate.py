@@ -6,7 +6,8 @@ import pandas as pd
 from common import METHODS, load_json, save_json, setup
 from metrics import compute
 
-EXTRA = {"lgbm_prompt_fields": "LightGBM (prompt fields only)"}
+EXTRA = {"lgbm_prompt_fields": "LightGBM (prompt fields only)",
+         "naive_hint": "LLM naive + one-sentence hint", "anyjev_l0_hint": "AnyJev L0 + one-sentence hint"}
 CI_KEYS = ("accuracy", "f1", "roc_auc", "brier", "ece", "coverage_at_5pct_error")
 
 

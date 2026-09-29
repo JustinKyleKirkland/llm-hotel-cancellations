@@ -144,6 +144,39 @@ def order_flip(cfg, flip, n, model):
     save(fig, cfg, "order_flip.png")
 
 
+def order_ranking(cfg, flip, n, model):
+    """The answer order changes the ranking, not just the probabilities: ROC-AUC under each order
+    alone and under AnyJev L0, for the plain question and with the one-sentence hint."""
+    r = flip["ranking_by_order"]
+    rows = [("auc_yes_or_no", "“Answer Yes or No” only", METHODS["naive"]["color"], None),
+            ("auc_no_or_yes", "“Answer No or Yes” only", METHODS["naive"]["color"], "//"),
+            ("auc_l0", "AnyJev L0 (both orders)", METHODS["anyjev_l0"]["color"], None)]
+    fig, axes = plt.subplots(1, 2, figsize=(8, 5.4), sharey=True)
+    fig.subplots_adjust(left=0.30, right=0.97, top=0.70, bottom=0.16, wspace=0.10)
+    ypos = np.arange(len(rows))[::-1]
+    for ax, key, title in [(axes[0], "plain", "Plain question"), (axes[1], "hint", "+ one-sentence hint")]:
+        for yv, (k, _, color, hatch) in zip(ypos, rows):
+            v = r[key][k]
+            ax.barh(yv, v, height=0.55, color=SURFACE if hatch else color, edgecolor=color,
+                    hatch=hatch, lw=2 if hatch else 0, zorder=3)
+            ax.text(v + 0.015, yv, f"{v:.3f}", va="center", color=INK, fontsize=13.5, zorder=5,
+                    bbox=dict(boxstyle="square,pad=0.1", fc=SURFACE, ec="none"))
+        ax.axvline(0.5, color=INK2, lw=1.2, ls=(0, (4, 3)), zorder=2)
+        ax.text(0.5, ypos[0] + 0.45, "coin flip", ha="center", va="bottom", color=INK2, fontsize=12)
+        ax.set_xlim(0, 0.9)
+        ax.set_xticks([0, 0.5])
+        ax.set_xticklabels(["0", "0.5"])
+        ax.grid(False)
+        ax.set_title(title, fontsize=14.5, color=INK, loc="left", pad=22)
+        ax.tick_params(axis="y", length=0)
+    axes[0].set_yticks(ypos, [lab for _, lab, *_ in rows], fontsize=13, color=INK)
+    fig.text(0.62, 0.035, "ROC-AUC (above 0.5 = ranks cancellers higher)", ha="center", color=INK2, fontsize=13)
+    titled(fig, "The answer order flips the ranking",
+           f"Same model, same bookings, only the order of “Yes” and “No” changes\n"
+           f"{n:,} test bookings · {model}")
+    save(fig, cfg, "order_ranking.png")
+
+
 def summary_table(cfg, metrics, n, model):
     order = [m for m in ["naive", "anyjev_l0", "anyjev_l1", "anyjev_l2", "lgbm_300", "logreg_300", "lgbm_full", "logreg_full"]
              if m in metrics]
@@ -255,7 +288,10 @@ def main():
     reliability(cfg, metrics, n, model)
     coverage(cfg, metrics, preds, n, model)
     if (out / "order_flip.json").exists():
-        order_flip(cfg, load_json(out / "order_flip.json"), n, model)
+        flip = load_json(out / "order_flip.json")
+        order_flip(cfg, flip, n, model)
+        if "ranking_by_order" in flip:
+            order_ranking(cfg, flip, n, model)
     summary_table(cfg, metrics, n, model)
     if (out / "label_curve.csv").exists():
         label_curve(cfg, metrics, n, model, "accuracy")

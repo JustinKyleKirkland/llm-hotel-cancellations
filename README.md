@@ -44,6 +44,8 @@ src/
   run_l1.py              (c) Decider.calibrate() on 300 labels, then level="L1"
   run_l2.py              (extra) Decider.fit_head() on the same 300 labels, then level="L2"
   run_order_flip.py      (d) "Yes or No" vs "No or Yes": how many decisions change
+  run_l0_hint.py         (extra) raw + L0 with a one-sentence revenue-manager note (config `hint`)
+  run_prior_strength.py  (extra) L0 at prior strength 0 / 0.5 / 0.75 / 1.0, from cached forwards
   label_budgets.py       label budgets 25/50/100/300/1,000 and their random draws
   run_label_curve.py     (extra) AnyJev L2 at each label budget (hidden states cached per prompt)
   run_label_curve_tabular.py  logistic regression + LightGBM on the same labelled rows
@@ -124,11 +126,20 @@ load their own OpenMP runtime, and having both in one process segfaults on macOS
 labels turn the LLM's ranking from backwards (AUC 0.388) to useful (0.640), but logistic
 regression is ahead at every budget (see `outputs/label_curve.json`).
 
+## One sentence, prior strength, and answer order
+
+- `run_l0_hint.py` puts one sentence in front of the question (`hint` in `config.yaml`, built only
+  from training-split facts). It moves zero-label L0 from AUC 0.388 to 0.588.
+- `run_prior_strength.py` reruns L0 at prior strength 0 / 0.5 / 0.75 / 1.0 from cached forwards. For
+  a yes/no question the correction never changes the ranking; 1.0 improves calibration only.
+- `run_order_flip.py` also reports the AUC under each answer order alone. The orders rank bookings
+  in opposite directions (plain: 0.325 vs 0.545; with the hint: 0.709 vs 0.331).
+
 ## Runtime
 
 The LLM part costs 2 forwards per test booking plus 2 per calibration booking (about 4,600
 prompts for the default run), plus one hidden-state forward per booking for L2 (about 2,300).
-The label curve adds about 30 minutes (about 3,700 hidden-state forwards). That is about 1.5 hours
-in all on an M1 Mac mini. The scripts print an estimate after the first batch, and later
+The label curve adds about 30 minutes (about 3,700 hidden-state forwards). The one-sentence run
+adds about 35 minutes (the note makes every prompt longer). That is about 2 hours in all on an M1 Mac mini. The scripts print an estimate after the first batch, and later
 runs reuse the measured speed (see the log for this machine's number). Everything else takes
 under a minute.

@@ -170,7 +170,10 @@ def make_decider(backend) -> Decider:
     return Decider(backend, shared_prefix=False)
 
 
-def question(cfg) -> Question:
+def question(cfg, hint: bool = False) -> Question:
+    """The yes/no question; with hint=True the revenue manager's one-sentence note goes first."""
+    if hint:
+        return Question.noul(f"{cfg['hint']} {cfg['question']}", name="cancel_hint")
     return Question.noul(cfg["question"], name="cancel")
 
 

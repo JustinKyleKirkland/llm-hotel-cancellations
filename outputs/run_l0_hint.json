@@ -1,0 +1,18 @@
+{
+  "method": "anyjev_l0_hint",
+  "question": "Note from the revenue manager: at these hotels, bookings with a non-refundable deposit are almost always canceled before arrival; most of them are group or tour-operator bookings. Based on this booking, will the guest cancel it before arrival?",
+  "model": "Qwen/Qwen3-1.7B",
+  "n": 2000,
+  "prior_strength": 0.75,
+  "batch_prior_by_phrasing": [
+    [
+      0.020708402339547002,
+      0.979291597660453
+    ],
+    [
+      0.9999693195797101,
+      3.0680420289773725e-05
+    ]
+  ],
+  "seconds": 2134.0475120544434
+}

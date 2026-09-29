@@ -1,0 +1,108 @@
+{
+  "rows": [
+    {
+      "hint": false,
+      "prior_strength": 0.0,
+      "accuracy": 0.629,
+      "f1": 0.0,
+      "roc_auc": 0.3877169939878042,
+      "brier": 0.37093441042421416,
+      "ece": 0.3708981211440575,
+      "pred_cancel_rate": 0.0,
+      "mean_p_cancel": 0.0001018788559425448,
+      "coverage_at_5pct_error": 0.001,
+      "roc_auc_no_deposit": 0.4485092318358557
+    },
+    {
+      "hint": false,
+      "prior_strength": 0.5,
+      "accuracy": 0.629,
+      "f1": 0.0,
+      "roc_auc": 0.3877169939878042,
+      "brier": 0.36537651186295067,
+      "ece": 0.36211656674624787,
+      "pred_cancel_rate": 0.0,
+      "mean_p_cancel": 0.008883433253752184,
+      "coverage_at_5pct_error": 0.001,
+      "roc_auc_no_deposit": 0.4485092318358557
+    },
+    {
+      "hint": false,
+      "prior_strength": 0.75,
+      "accuracy": 0.629,
+      "f1": 0.0,
+      "roc_auc": 0.3877169939878042,
+      "brier": 0.32865679975057466,
+      "ece": 0.2971371938639327,
+      "pred_cancel_rate": 0.0,
+      "mean_p_cancel": 0.0759977647453444,
+      "coverage_at_5pct_error": 0.001,
+      "roc_auc_no_deposit": 0.4485092318358557
+    },
+    {
+      "hint": false,
+      "prior_strength": 1.0,
+      "accuracy": 0.518,
+      "f1": 0.1602787456445993,
+      "roc_auc": 0.3877169939878042,
+      "brier": 0.27028431062425523,
+      "ece": 0.11483782204161266,
+      "pred_cancel_rate": 0.203,
+      "mean_p_cancel": 0.41295586388317396,
+      "coverage_at_5pct_error": 0.001,
+      "roc_auc_no_deposit": 0.4485092318358557
+    },
+    {
+      "hint": true,
+      "prior_strength": 0.0,
+      "accuracy": 0.629,
+      "f1": 0.0,
+      "roc_auc": 0.5882733256484644,
+      "brier": 0.37054285278133453,
+      "ece": 0.3704542873453437,
+      "pred_cancel_rate": 0.0,
+      "mean_p_cancel": 0.0005457126546563095,
+      "coverage_at_5pct_error": 0.015,
+      "roc_auc_no_deposit": 0.5347875192096948
+    },
+    {
+      "hint": true,
+      "prior_strength": 0.5,
+      "accuracy": 0.629,
+      "f1": 0.0,
+      "roc_auc": 0.5882733256484644,
+      "brier": 0.355793511154022,
+      "ece": 0.352232136166812,
+      "pred_cancel_rate": 0.0,
+      "mean_p_cancel": 0.018767863833187938,
+      "coverage_at_5pct_error": 0.015,
+      "roc_auc_no_deposit": 0.5347875192096948
+    },
+    {
+      "hint": true,
+      "prior_strength": 0.75,
+      "accuracy": 0.629,
+      "f1": 0.0,
+      "roc_auc": 0.5882733256484644,
+      "brier": 0.30121063161139866,
+      "ece": 0.27118488330375834,
+      "pred_cancel_rate": 0.0,
+      "mean_p_cancel": 0.09981511669624157,
+      "coverage_at_5pct_error": 0.015,
+      "roc_auc_no_deposit": 0.5347875192096948
+    },
+    {
+      "hint": true,
+      "prior_strength": 1.0,
+      "accuracy": 0.6275,
+      "f1": 0.24057084607543322,
+      "roc_auc": 0.5882733256484644,
+      "brier": 0.2278559205638947,
+      "ece": 0.04386167096312475,
+      "pred_cancel_rate": 0.1195,
+      "mean_p_cancel": 0.3803835826892248,
+      "coverage_at_5pct_error": 0.015,
+      "roc_auc_no_deposit": 0.5347875192096948
+    }
+  ]
+}
