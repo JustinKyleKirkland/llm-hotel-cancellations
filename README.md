@@ -95,3 +95,8 @@ On 2,000 held-out bookings (ROC-AUC, higher is better, 0.5 is a coin flip):
 The two answer orders rank bookings in opposite directions: 0.325 ("Yes or No") vs 0.545
 ("No or Yes") for the plain question, and 0.709 vs 0.331 with the hint. The full table, with
 confidence intervals, is in `outputs/metrics_summary.csv`.
+
+## License
+
+The code is MIT licensed (see `LICENSE`). The booking data belongs to its authors and is
+shared under CC BY 4.0; cite Antonio, de Almeida & Nunes (2019) if you use it.
