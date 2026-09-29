@@ -1,145 +1,97 @@
-# hotel-anyjev
+# llm-hotel-cancellations
 
-Can an open LLM, read the AnyJev way, predict hotel booking cancellations, and can you trust its
-probabilities enough to automate part of the decision? This repo runs the whole comparison
-end to end on an Apple Silicon Mac: AnyJev raw / L0 / L1 against LightGBM and logistic
-regression, with calibration, order-flip and "how much can I automate" metrics.
+Can a small open LLM tell which hotel bookings will be canceled, and can you trust its
+probabilities enough to automate part of that call? This repo tests it on 119,390 real bookings
+with [AnyJev](https://github.com/nokia-applied-research/AnyJev), and compares it with LightGBM and
+logistic regression. Everything runs on an Apple Silicon Mac.
 
-- **AnyJev**: <https://github.com/nokia-applied-research/AnyJev> (`pip install "anyjev[hf]"`, v0.2.0,
-  Apache-2.0). It reads a typed question's answer probabilities from one prefill of the model's
-  next-token distribution. Nothing is generated.
-- **Data**: Antonio, N., de Almeida, A., & Nunes, L. (2019). *Hotel booking demand datasets.*
-  Data in Brief, 22, 41–49. <https://doi.org/10.1016/j.dib.2018.11.126> (CC BY 4.0).
-  The paper PDF is in the parent folder: `../main.pdf`.
-  (Not found in `~/Zotero`.)
+Short version: with no labels the model ranks bookings backwards, one sentence of domain
+knowledge helps a little, a few hundred labels fix it, and logistic regression still does better
+at every label budget.
 
-## Quick start
+## Data
+
+Antonio, N., de Almeida, A., & Nunes, L. (2019). Hotel booking demand datasets. *Data in Brief*,
+22, 41-49. https://doi.org/10.1016/j.dib.2018.11.126 (CC BY 4.0)
+
+`prepare_data.py` looks for the paper's supplementary files (`H1.csv`, `H2.csv`) in `data/raw/`.
+If they aren't there, it downloads the
+[TidyTuesday copy](https://github.com/rfordatascience/tidytuesday/tree/master/data/2020/2020-02-11)
+of the same bookings. After cleaning, the two sources are identical cell for cell, so either one
+reproduces the results in `outputs/`.
+
+## Running it
 
 ```bash
-make setup            # python3 -m venv .venv && pip install -r requirements.txt
-make smoke            # 50 test bookings, a few minutes (outputs/smoke/, figures/smoke/)
-make all              # the full run from config.yaml (default 2,000 test bookings)
+make setup    # python3 -m venv .venv && pip install -r requirements.txt
+make smoke    # 50 test bookings, a few minutes; writes to outputs/smoke/ and figures/smoke/
+make all      # the full run: 2,000 test bookings, about 2 hours on an M1 Mac mini
 ```
 
-`./run_all.sh [--smoke]` is the same thing without make. Every script also runs on its own, e.g.
-`.venv/bin/python src/run_l0.py --smoke`.
+`./run_all.sh [--smoke]` does the same without make, and every script in `src/` also runs on its
+own. Settings (model, sample sizes, seed, the one-sentence hint) live in `config.yaml`.
 
-The data comes from the paper's supplementary file (`1-s2.0-S2352340918315191-mmc2.zip`,
-`H1.csv` = resort hotel, `H2.csv` = city hotel) unzipped into `data/raw/`. If those files are
-missing, `prepare_data.py` downloads the TidyTuesday mirror of the same 119,390 bookings
-(`data.source: mirror` in `config.yaml` forces it).
+## What's in `src/`
 
-## Layout
-
-```
-config.yaml              model, sample sizes, seed, paths
-run_all.sh / Makefile    one command, in order; --smoke for a 50-booking check
-src/
-  common.py              config, --smoke, method names + fixed chart colors
-  prepare_data.py        load, clean, drop leakage columns, stratified train/calib/test split
-  booking_text.py        booking row -> hotel-manager description (+ outputs/example_prompts.md)
-  llm_common.py          AnyJev HFBackend + disk cache of forwards, Decider, the yes/no Question
-  run_naive.py           (a) AnyJev level="raw"
-  run_l0.py              (b) AnyJev level="L0" (zero labels)
-  run_l1.py              (c) Decider.calibrate() on 300 labels, then level="L1"
-  run_l2.py              (extra) Decider.fit_head() on the same 300 labels, then level="L2"
-  run_order_flip.py      (d) "Yes or No" vs "No or Yes": how many decisions change
-  run_l0_hint.py         (extra) raw + L0 with a one-sentence revenue-manager note (config `hint`)
-  run_prior_strength.py  (extra) L0 at prior strength 0 / 0.5 / 0.75 / 1.0, from cached forwards
-  label_budgets.py       label budgets 25/50/100/300/1,000 and their random draws
-  run_label_curve.py     (extra) AnyJev L2 at each label budget (hidden states cached per prompt)
-  run_label_curve_tabular.py  logistic regression + LightGBM on the same labelled rows
-  classical.py           tabular features, LightGBM / logistic regression
-  run_classical.py       (e) LightGBM + logistic regression on the full training split
-  run_lowdata.py         (f) the same models on the 300 rows L1 gets
-  metrics.py             accuracy, F1, ROC-AUC, Brier, ECE, coverage vs accuracy
-  evaluate.py            all metrics + bootstrap 95% CIs -> outputs/metrics.json, metrics_summary.csv
-  make_figures.py        figures/*.png
-outputs/                 preds_<method>.csv, metrics.json, order_flip.json, run_*.json, example_prompts.md
-figures/                 reliability_diagram.png, coverage_vs_accuracy.png, order_flip.png, summary_table.png,
-                         label_curve_roc_auc.png, label_curve.png (accuracy)
-article/draft.md         the Medium draft
-```
-
-## What each method is, precisely
-
-| method | what it is |
+| script | what it does |
 |---|---|
-| `naive` | AnyJev `level="raw"`: one prompt ending "Answer Yes or No.", softmax over the Yes/No token logits. |
-| `anyjev_l0` | AnyJev `level="L0"` with the library defaults: both phrasings ("Yes or No" and "No or Yes") combined in log space, then the batch prior (the model's mean answer over the test batch) divided out at strength 0.75. No labels. |
-| `anyjev_l1` | `Decider.calibrate(question, 300 states, 300 labels)` fits a temperature over L0 (with the calibration set's prior frozen into the artifact), then `level="L1"`. |
-| `anyjev_l2` (extra, not in the original brief) | `Decider.fit_head(question, 300 states, 300 labels)`: a closed-form head (shrunk LDA / ridge) on the model's hidden state partway down, then `level="L2"`. AnyJev's README presents L2 as the level to use once you have 100–300 labels. Unlike L1, it can change the ranking. |
-| `lgbm_full`, `logreg_full` | trained on the full training split (83k bookings), every non-leaky column. |
-| `lgbm_prompt_fields` | LightGBM on only the fields the LLM sees in its text (reported in the tables, not the charts). |
-| `lgbm_300`, `logreg_300` | trained on the same 300 labelled bookings L1 uses. |
+| `prepare_data.py` | cleans the data, drops leaky columns, makes stratified train / calibration / test splits |
+| `booking_text.py` | turns a booking row into a short note (examples in `outputs/example_prompts.md`) |
+| `run_naive.py` | AnyJev `level="raw"`: one prompt, softmax over the Yes/No tokens |
+| `run_l0.py` | AnyJev `level="L0"`: both answer orders combined, label bias divided out, no labels |
+| `run_l1.py` | `Decider.calibrate()` on 300 labels (temperature scaling), then `level="L1"` |
+| `run_l2.py` | `Decider.fit_head()` on the same 300 labels (a linear head on hidden states), then `level="L2"` |
+| `run_l0_hint.py` | raw and L0 with a one-sentence note from the revenue manager in front of the question |
+| `run_prior_strength.py` | L0 with its bias correction at strength 0, 0.5, 0.75 and 1.0 |
+| `run_order_flip.py` | "Yes or No" vs "No or Yes": how many decisions change, and the ranking under each order |
+| `run_classical.py` | LightGBM and logistic regression on the full training split |
+| `run_lowdata.py` | the same two models on the 300 bookings L1 and L2 get |
+| `run_label_curve.py` | AnyJev L2 at 25, 50, 100, 300 and 1,000 labels |
+| `run_label_curve_tabular.py` | the tabular models on exactly the same labelled rows |
+| `evaluate.py` | accuracy, F1, ROC-AUC, Brier, ECE, coverage vs accuracy, bootstrap 95% CIs |
+| `make_figures.py` | everything in `figures/` |
 
-The yes/no question is `Question.noul("Based on this booking, will the guest cancel it before arrival?")`.
+Results end up in `outputs/` (`metrics.json` has every number) and charts in `figures/`.
 
-## Choices worth knowing about
+## Choices and gotchas
 
-- **Model**: `Qwen/Qwen3-1.7B` in float16 on MPS. The M1 has no native bfloat16: on the real
-  prompts, float16 ran at 0.49 s/prompt against 0.68 for bf16, and the two agree to a mean
-  |ΔP| of 0.001. This Mac mini has 8 GB of unified memory, so
-  Qwen3-4B (8 GB in bf16) does not fit. Qwen3-1.7B is one of the models in AnyJev's own
-  small-model table (`docs/results_small_models.md`). Change `model.name` in `config.yaml` on a bigger machine.
-- **Leakage**: `reservation_status` and `reservation_status_date` encode the outcome. I also drop
-  `assigned_room_type`, which is set at check-in. The paper (Sec. 2) warns that some attributes
-  (e.g. party size) can be corrected at check-in, so their distribution differs between canceled
-  and non-canceled bookings. That is a residual, milder leak that affects every method.
-- **Missing values**: `children` has 4 NAs, which are set to 0. `agent` / `company` `NULL` means
-  "not applicable" (paper, Sec. 2), so it is kept as its own category. Bookings with zero guests
-  are dropped, and ADR is clipped to [0, 1000].
-- **Splits**: stratified on `is_canceled`, seed 42. 70% train, 10% calibration pool, 20% test pool.
-  The LLM scores a stratified 2,000-booking sample of the test pool, and every method is scored on
-  those same 2,000. Classical models are also scored on the whole test pool (`outputs/run_classical.json`).
-- **Order flip for a yes/no question**: AnyJev's L0 reads both phrasings and combines them
-  symmetrically, so its flip rate is zero by construction. `run_order_flip.py` recomputes it
-  with the order reversed instead of assuming it. It also reports a "prior only" ablation (the
-  prior correction without the order averaging) to show which half of L0 does the work.
-- **Memory (8 GB Macs)**: the first smoke run segfaulted inside Apple's Metal driver while
-  copying the weights to the GPU, with 4 GB of swap in use. The backend now loads the weights only
-  when a prompt is not in the cache, so fully cached steps never touch the GPU. If it happens
-  again, close memory-heavy apps and rerun: the cache means finished prompts are not recomputed.
-- **Caching**: `llm_common.CachedHFBackend` subclasses AnyJev's `HFBackend` and caches the
-  log-probs of each (prompt, label tokens) pair in `outputs/cache/`. The naive, L0, L1 and flip
-  scripts share prompts, so each prompt is scored by the model only once. Delete the cache to
-  force fresh forwards.
-- **ECE** is on the top-label confidence, with 15 equal-width bins. The reliability diagram bins
-  P(cancel) into 10 bins. "Auto @≤5% err" is the largest share of bookings you can decide
-  automatically, most confident first, while keeping the error on that share at or below 5%.
+- **Model.** `Qwen/Qwen3-1.7B` in float16 on MPS, because that's what fits in 8 GB. The M1 has no
+  native bfloat16, and float16 was faster (0.49 vs 0.68 s per prompt) with near-identical
+  outputs. On a bigger machine, change `model.name` in `config.yaml`.
+- **Leakage.** `reservation_status` and its date give away the outcome, and
+  `assigned_room_type` is set at check-in, so all three are dropped. The dataset's authors note
+  that a few other fields can be corrected at check-in, which is a smaller leak that affects
+  every method equally.
+- **Missing values.** `children` has 4 blanks, set to 0. `NULL` in `agent` and `company` means
+  "not applicable", so it stays as its own category. Bookings with zero guests are dropped.
+- **Splits.** Stratified on `is_canceled` with seed 42: 70% train, 10% calibration pool, 20% test
+  pool. Every method is scored on the same stratified sample of 2,000 test bookings.
+- **The hint.** The sentence in `config.yaml` uses only facts from the training split (99.3% of
+  its non-refundable bookings canceled, and 97% of those were group or tour-operator bookings).
+- **Caching.** `llm_common.CachedHFBackend` wraps AnyJev's `HFBackend` and stores every prompt's
+  log-probs and hidden states in `outputs/cache/`, so each booking goes through the model once no
+  matter how many experiments reuse it. Delete that folder to start fresh.
+- **Memory on 8 GB Macs.** With other apps open, Metal can run out of memory and crash while loading
+  the weights. The backend only loads the model when something isn't cached, so rerunning after a
+  crash picks up where it stopped. Closing a browser first helps.
+- **torch and LightGBM in one process.** Each brings its own OpenMP runtime, and loading both
+  segfaults on macOS. That's why the label curve is split into two scripts.
+- **Metrics.** ECE uses top-label confidence and 15 equal-width bins. "Auto at 5% error" is the
+  largest share of bookings you can decide automatically, most confident first, while keeping the
+  error on that share at or below 5%.
 
-## Why the zero-label LLM struggles here
+## Main results
 
-In this data, 99.3% of bookings with a non-refundable deposit were canceled (training split).
-Those are mostly group blocks placed through travel agents and released later: a known quirk of
-the dataset. An LLM brings the opposite world prior ("they paid, so they will come"), and it also
-reads long lead times as commitment. Its zero-label ranking is therefore *inverted* on these
-hotels. Neither the prior correction (L0) nor a temperature (L1) can change a ranking. Labels
-used through L2, or a tabular model, can.
+On 2,000 held-out bookings (ROC-AUC, higher is better, 0.5 is a coin flip):
 
-## Label-efficiency curve
+| method | labels | ROC-AUC |
+|---|---|---|
+| AnyJev L0 | 0 | 0.388 |
+| AnyJev L0 + one-sentence hint | 0 | 0.588 |
+| AnyJev L2 | 300 | 0.817 |
+| logistic regression | 300 | 0.843 |
+| LightGBM | 83,447 | 0.959 |
 
-`run_label_curve.py` and `run_label_curve_tabular.py` train AnyJev L2, logistic regression and
-LightGBM on the same labelled bookings at 25, 50, 100, 300 and 1,000 labels (5 draws each up to
-100, 3 at 300, 1 at 1,000). They run as separate processes on purpose: torch and LightGBM each
-load their own OpenMP runtime, and having both in one process segfaults on macOS. Result: 25
-labels turn the LLM's ranking from backwards (AUC 0.388) to useful (0.640), but logistic
-regression is ahead at every budget (see `outputs/label_curve.json`).
-
-## One sentence, prior strength, and answer order
-
-- `run_l0_hint.py` puts one sentence in front of the question (`hint` in `config.yaml`, built only
-  from training-split facts). It moves zero-label L0 from AUC 0.388 to 0.588.
-- `run_prior_strength.py` reruns L0 at prior strength 0 / 0.5 / 0.75 / 1.0 from cached forwards. For
-  a yes/no question the correction never changes the ranking; 1.0 improves calibration only.
-- `run_order_flip.py` also reports the AUC under each answer order alone. The orders rank bookings
-  in opposite directions (plain: 0.325 vs 0.545; with the hint: 0.709 vs 0.331).
-
-## Runtime
-
-The LLM part costs 2 forwards per test booking plus 2 per calibration booking (about 4,600
-prompts for the default run), plus one hidden-state forward per booking for L2 (about 2,300).
-The label curve adds about 30 minutes (about 3,700 hidden-state forwards). The one-sentence run
-adds about 35 minutes (the note makes every prompt longer). That is about 2 hours in all on an M1 Mac mini. The scripts print an estimate after the first batch, and later
-runs reuse the measured speed (see the log for this machine's number). Everything else takes
-under a minute.
+The two answer orders rank bookings in opposite directions: 0.325 ("Yes or No") vs 0.545
+("No or Yes") for the plain question, and 0.709 vs 0.331 with the hint. The full table, with
+confidence intervals, is in `outputs/metrics_summary.csv`.

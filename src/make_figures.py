@@ -107,7 +107,7 @@ def coverage(cfg, metrics, preds, n, model):
     ax.legend(handles=legend_handles(order, preds, lambda m: METHODS[m]["label"]), loc="upper center",
               bbox_to_anchor=(0.45, -0.13), ncol=2, handlelength=1.4, columnspacing=1.2)
     titled(fig, "How much can you automate?",
-           f"Dots mark confidence thresholds {thresholds[0]:.2f}–{thresholds[-1]:.2f} · "
+           f"Dots mark confidence thresholds {thresholds[0]:.2f} to {thresholds[-1]:.2f} · "
            f"{n:,} test bookings\nL0 (dashed) and L1 share one curve: same ranking · LLM = {model}")
     save(fig, cfg, "coverage_vs_accuracy.png")
 
@@ -217,7 +217,7 @@ def summary_table(cfg, metrics, n, model):
         ax.text(0.025, yc, labels[m], ha="left", va="center", fontsize=13, color=INK)
         for j, (key, _, _, fmt) in enumerate(cols):
             v = metrics[m].get(key)
-            txt = "—" if v is None else fmt.format(v)
+            txt = "n/a" if v is None else fmt.format(v)
             is_best = v is not None and key in best and np.isclose(v, best[key])
             ax.text(xs[j + 1] + widths[j + 1] / 2, yc, txt, ha="center", va="center", fontsize=13,
                     color=INK, fontweight="bold" if is_best else "normal")
@@ -273,8 +273,8 @@ def label_curve(cfg, metrics, n, model, metric="accuracy"):
     reps = df.groupby("n_labels").repeat.nunique()
     titled(fig, "How many labels does it take?",
            f"Every method trains on the same labelled bookings · shaded = range\n"
-           f"over {reps.min()}–{reps.max()} random draws per budget · LLM = {model}".replace(
-               f"{reps.min()}–{reps.max()}", str(reps.max()) if reps.min() == reps.max() else f"{reps.min()}–{reps.max()}"))
+           f"over {reps.max() if reps.min() == reps.max() else f'{reps.min()} to {reps.max()}'} random draws "
+           f"per budget · LLM = {model}")
     save(fig, cfg, "label_curve.png" if metric == "accuracy" else f"label_curve_{metric}.png")
 
 

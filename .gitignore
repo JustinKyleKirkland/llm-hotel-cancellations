@@ -6,3 +6,5 @@ outputs/cache/
 outputs/smoke/
 figures/smoke/
 .DS_Store
+*.log
+article/
