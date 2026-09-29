@@ -1,0 +1,20 @@
+{
+  "method": "anyjev_l0",
+  "level": "L0",
+  "model": "Qwen/Qwen3-1.7B",
+  "n": 2000,
+  "prior_method": "batch",
+  "prior_strength": 0.75,
+  "batch_prior_by_phrasing": [
+    [
+      0.002705725451244249,
+      0.9972942745487559
+    ],
+    [
+      0.9999939264686334,
+      6.073531366640386e-06
+    ]
+  ],
+  "mean_answer_mass": 0.9999999936029196,
+  "seconds": 1397.7721767425537
+}

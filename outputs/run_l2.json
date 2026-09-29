@@ -1,0 +1,28 @@
+{
+  "method": "anyjev_l2",
+  "level": "L2",
+  "model": "Qwen/Qwen3-1.7B",
+  "n": 2000,
+  "n_calib": 300,
+  "artifact_meta": {
+    "model": "Qwen/Qwen3-1.7B",
+    "question": "451c32c8ad8267eb",
+    "question_id": "cancel",
+    "kind": "noul",
+    "text": "Based on this booking, will the guest cancel it before arrival?",
+    "layer_abs": 24,
+    "n_blocks": 28,
+    "hidden_size": 2048,
+    "method": "head:lda",
+    "layer": 3,
+    "temperature": 3.266114919785685,
+    "n_calib": 300,
+    "cv": {
+      "oof_nll": 0.5024722533408263,
+      "oof_acc": 0.74
+    }
+  },
+  "blocks_executed": 24,
+  "fit_seconds": 169.06798315048218,
+  "seconds": 954.6887431144714
+}

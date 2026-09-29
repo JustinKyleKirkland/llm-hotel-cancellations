@@ -1,0 +1,10 @@
+{
+  "method": "anyjev_l1",
+  "level": "L1",
+  "model": "Qwen/Qwen3-1.7B",
+  "n": 2000,
+  "n_calib": 300,
+  "calib_cancel_rate": 0.37,
+  "temperature": 5.771593852756642,
+  "seconds": 238.14479207992554
+}

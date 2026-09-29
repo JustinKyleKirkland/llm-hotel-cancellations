@@ -1,0 +1,7 @@
+{
+  "method": "naive",
+  "level": "raw",
+  "model": "Qwen/Qwen3-1.7B",
+  "n": 2000,
+  "seconds": 1004.9957151412964
+}

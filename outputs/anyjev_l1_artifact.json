@@ -1,0 +1,19 @@
+{
+  "model": "Qwen/Qwen3-1.7B",
+  "question": "451c32c8ad8267eb",
+  "method": "temperature",
+  "temperature": 5.771593852756642,
+  "prior_method": "batch",
+  "prior_strength": 0.75,
+  "n_calib": 300,
+  "prior": [
+    [
+      0.00287266,
+      0.99712734
+    ],
+    [
+      0.99999378,
+      6.22e-06
+    ]
+  ]
+}

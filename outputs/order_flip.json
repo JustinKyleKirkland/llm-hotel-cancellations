@@ -1,0 +1,35 @@
+{
+  "n": 2000,
+  "question": "Based on this booking, will the guest cancel it before arrival?",
+  "model": "Qwen/Qwen3-1.7B",
+  "l0_recompute_max_abs_diff": 0.0,
+  "methods": {
+    "naive": {
+      "flip_rate": 0.0,
+      "n_flipped": 0,
+      "mean_abs_prob_change": 0.0026996519198776085,
+      "acc_yes_first": 0.629,
+      "acc_no_first": 0.629,
+      "cancel_rate_pred_yes_first": 0.0,
+      "cancel_rate_pred_no_first": 0.0
+    },
+    "prior_only": {
+      "flip_rate": 0.0055,
+      "n_flipped": 11,
+      "mean_abs_prob_change": 0.13681615987295032,
+      "acc_yes_first": 0.6235,
+      "acc_no_first": 0.629,
+      "cancel_rate_pred_yes_first": 0.0055,
+      "cancel_rate_pred_no_first": 0.0
+    },
+    "anyjev_l0": {
+      "flip_rate": 0.0,
+      "n_flipped": 0,
+      "mean_abs_prob_change": 0.0,
+      "acc_yes_first": 0.629,
+      "acc_no_first": 0.629,
+      "cancel_rate_pred_yes_first": 0.0,
+      "cancel_rate_pred_no_first": 0.0
+    }
+  }
+}
